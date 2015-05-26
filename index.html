@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+  <head>
+    <title>App</title>
+    <meta name="viewport" content="width=device-width,height=device-height,user-scalable=no" />
+    <style>
+      * {
+        -webkit-touch-callout: none;
+        -webkit-text-size-adjust: none;
+        -webkit-tap-highlight-color: rgba(0,0,0,0);
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      body {
+        margin: 0;
+        background-color: #000;
+      }
+      #dados {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        bottom: 0;
+        right: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="dados"></div>
+
+    <script src="/hammer.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var socket = io(prompt('Digite o IP de acesso:'));
+
+      var initialA = null;
+      var initialB = 0;
+      var a = 0;
+      var b = 0;
+      var positionX = 0;
+      var positionY = 0;
+      var enviar = false;
+
+      function handleOrientationEvent(event) {
+        a = event.alpha;
+        b = event.beta;
+
+        if(initialA !== null) {
+          var dif = initialA - a;
+          if(dif < -22.5) initialA -= dif + 22.5;
+          else if(dif > 22.5)  initialA -= dif - 22.5;
+        }
+      }
+
+      function envio() {
+        var newPositionX = initialA - a;
+        var newPositionY = initialB - b;
+        if(Math.floor(positionX*10) != Math.floor(newPositionX*10) || Math.floor(positionY*10) != Math.floor(newPositionY*10)) {
+          positionX = newPositionX;
+          positionY = newPositionY;
+          socket.emit('mover', {x: positionX, y: positionY});
+        }
+        window.requestAnimationFrame(envio);
+      }
+
+      window.addEventListener("deviceorientation", handleOrientationEvent, false);
+
+      new Hammer.Manager(document.getElementById('dados'),{
+          recognizers: [
+              [Hammer.Tap, { taps: 2, posThreshold: 20 }],
+              [Hammer.Press, { threshold: 50, time: 200 }],
+              [Hammer.Pinch],
+              [Hammer.Swipe]
+          ]
+      })
+      .on('tap', function(e) {
+        socket.emit('view', {});
+        e.preventDefault();
+      })
+      .on('swipeleft', function(e) {
+        socket.emit('slide', { tipo: 2 });
+        e.preventDefault();
+      })
+      .on('swiperight', function(e) {
+        socket.emit('slide', { tipo: 1 });
+        e.preventDefault();
+      })
+      .on('swipeup', function(e) {
+        socket.emit('slide', { tipo: 4 });
+        e.preventDefault();
+      })
+      .on('swipedown', function(e) {
+        socket.emit('slide', { tipo: 3 });
+        e.preventDefault();
+      })
+      .on('pinchin', function(e) {
+        zoom = false;
+      })
+      .on('pinchout', function(e) {
+        zoom = true;
+      })
+      .on('pinchend', function(e) {
+        socket.emit('zoom', { tipo: zoom });
+      })
+      .on('press', function() {
+        enviar = true;
+        navigator.vibrate(200);
+
+        initialA = a;
+        initialB = b;
+
+        document.body.style.backgroundColor = '#660';
+        socket.emit('toque', { tipo: enviar });
+      })
+      .on('pressup', function() {
+        if(enviar) {
+          enviar = false;
+          document.body.style.backgroundColor = '';
+          socket.emit('toque', { tipo: enviar });
+        }
+      });
+
+      window.requestAnimationFrame(envio);
+    </script>
+  </body>
+</html>
