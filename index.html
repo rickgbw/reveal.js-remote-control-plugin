@@ -33,7 +33,8 @@
     <script src="/hammer.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      var socket = io(prompt('Digite o IP de acesso:'));
+      var iourl = window.location.protocol + "//" + window.location.hostname + ":" + window.location.port;
+      var socket = io(iourl);
 
       var initialA = null;
       var initialB = 0;
